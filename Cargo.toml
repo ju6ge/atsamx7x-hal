@@ -1,0 +1,35 @@
+[package]
+name = "atsamx7x_hal"
+version = "0.0.1"
+authors = ["Felix Richter <judge@felixrichter.tech>"]
+description = "HAL for ATSAMX7X microcontrollers"
+categories = [
+    "embedded",
+    "hardware-support",
+    "no-std"
+]
+keywords = [
+    "no-std",
+    "arm",
+    "cortex-m",
+    "embedded-hal",
+    "hal"
+]
+license = "MIT"
+repository = "https://github.com/ju6ge/atsamx7x-hal"
+readme = "README.md"
+edition = "2018"
+
+[dependencies]
+cortex-m = "0.6.0"
+embedded-hal = { version = "0.2.3", features = ["unproven"] }
+nb = "0.1.2"
+atsame70q21  = { version = "0.0.1", git = "https://github.com/ju6ge/atsame70q21" }
+
+
+[dev-dependencies]
+cortex-m-rt = "0.6.10"
+cortex-m-rtfm = "0.5.0"
+cortex-m-semihosting = "0.3.5"
+panic-halt = "0.2.0"
+panic-semihosting = "0.5.3"
