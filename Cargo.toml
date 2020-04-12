@@ -1,5 +1,5 @@
 [package]
-name = "atsamx7x_hal"
+name = "atsamx7x-hal"
 version = "0.0.1"
 authors = ["Felix Richter <judge@felixrichter.tech>"]
 description = "HAL for ATSAMX7X microcontrollers"
