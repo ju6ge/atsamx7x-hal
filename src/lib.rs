@@ -1,5 +1,4 @@
 #![no_std]
-#![feature(core_intrinsics)]
 
 extern crate embedded_hal as hal;
 extern crate nb;
