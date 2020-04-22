@@ -22,6 +22,9 @@ pub struct MegaHertz(pub u32);
 #[derive(PartialEq, PartialOrd, Clone, Copy)]
 pub struct MilliSeconds(pub u32);
 
+#[derive(PartialEq, PartialOrd, Clone, Copy)]
+pub struct NanoSeconds(pub u32);
+
 /// Extension trait that adds convenience methods to the `u32` type
 pub trait U32Ext {
     /// Wrap in `Bps`
@@ -89,11 +92,21 @@ impl Into<MilliSeconds> for Hertz {
         MilliSeconds(1_000 / freq)
     }
 }
+
+
 impl Into<Hertz> for MilliSeconds {
     fn into(self) -> Hertz {
         let period = self.0;
         assert!(period != 0 && period <= 1_000);
         Hertz(1_000 / period)
+    }
+}
+
+impl Into<NanoSeconds> for Hertz {
+    fn into(self) -> NanoSeconds{
+        let freq = self.0;
+        assert!(freq != 0 && freq <= 1_000_000_000);
+        NanoSeconds(1_000_000_000 / freq)
     }
 }
 

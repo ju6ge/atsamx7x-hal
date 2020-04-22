@@ -1,5 +1,4 @@
 #![no_std]
-#![feature(core_intrinsics)]
 
 extern crate embedded_hal as hal;
 extern crate nb;
@@ -11,3 +10,4 @@ pub mod serial;
 pub mod time;
 pub mod delay;
 pub mod clock_gen;
+pub mod sdram;
