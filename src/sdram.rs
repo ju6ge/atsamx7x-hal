@@ -5,35 +5,57 @@ use crate::gpio::pioe::{PE0, PE1, PE2, PE3, PE4, PE5};
 use crate::gpio::{PeripheralCntr, PeriphA, PeriphC};
 use crate::time::NanoSeconds;
 use crate::clock_gen::Clocks;
+use crate::delay::Delay;
 
-pub mod config {
-	pub enum SdramColumns {
-		Columns256,
-		Columns512,
-		Columns1K,
-		Columns2K,
-	}
+use crate::target_device::{SDRAMC, PMC};
+use embedded_hal::blocking::delay::{DelayUs};
 
-	pub enum SdramRows {
-		Rows2K,
-		Rows4K,
-		Rows8K
-	}
+use target_device::sdramc::sdramc_mr::MODE_A as SdramMode;
 
-	pub enum SdramBanks {
-		Bank2,
-		Bank4
-	}
 
-	pub struct SdramConfig {
-		banks : SdramBanks,
-		rows : SdramRows,
-		columns : SdramColumns
-	}
-
-	#[derive(Debug)]
-	pub struct InvalidConfig;
+pub enum SdramColumns {
+	Columns256,
+	Columns512,
+	Columns1K,
+	Columns2K,
 }
+
+pub enum SdramRows {
+	Rows2K,
+	Rows4K,
+	Rows8K
+}
+
+pub enum SdramBanks {
+	Bank2,
+	Bank4
+}
+
+pub enum SdramAlignment {
+	Aligned,
+	Unaligned
+}
+
+pub struct SdramTiming {
+	twr : NanoSeconds,
+	trc : NanoSeconds,
+	trp : NanoSeconds,
+	trcd : NanoSeconds,
+	tras : NanoSeconds,
+	txsr : NanoSeconds,
+	refresh : NanoSeconds
+}
+
+pub struct SdramConfig {
+	banks : SdramBanks,
+	rows : SdramRows,
+	columns : SdramColumns,
+	alignment : SdramAlignment,
+	timing : SdramTiming
+}
+
+#[derive(Debug)]
+pub struct InvalidConfig;
 
 pub trait SdramPins {}
 
@@ -184,9 +206,97 @@ impl<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12,
 		WET : WE
 	{}
 
-
-
 pub struct Sdram<PINS> {
+	sdramc : SDRAMC,
 	pins: PINS,
-	start_address : *const i32
+	start_address : *const u32,
+	size : u32,
+	mode : SdramMode
+}
+
+impl<PINS> Sdram<PINS> {
+	pub fn setup(
+		sdramc : SDRAMC,
+		pins : PINS,
+		config : SdramConfig,
+		clocks : &Clocks,
+		pmc : &mut PMC
+	) -> Result<Self, InvalidConfig>
+	where
+		PINS: SdramPins
+	{
+		//enable sdram address area
+		let matrix = unsafe { &(*target_device::MATRIX::ptr()) };
+		matrix.ccfg_smcnfcs.modify( |_,w| w.sdramen().set_bit() );
+
+		//Enable SDRAM Clock
+		pmc.pmc_pcer1.write( |w| w.pid62().set_bit() );
+
+		//Todo calculate correct timing parameters
+
+		sdramc.sdramc_cr.write( |w| {
+			match config.columns {
+				SdramColumns::Columns256 => w.nc().col8(),
+				SdramColumns::Columns512 => w.nc().col9(),
+				SdramColumns::Columns1K  => w.nc().col10(),
+				SdramColumns::Columns2K  => w.nc().col11(),
+			};
+			match config.rows {
+				SdramRows::Rows2K => w.nr().row11(),
+				SdramRows::Rows4K => w.nr().row12(),
+				SdramRows::Rows8K => w.nr().row13(),
+			};
+			match config.banks {
+				SdramBanks::Bank2 => w.nb().bank2(),
+				SdramBanks::Bank4 => w.nb().bank4(),
+			};
+			// make sure to be in 16 bit mode since this architechture only supports 16bit wide data access
+			w.dbw().set_bit()
+			//Todo add Timing parameters
+		});
+
+		let mut delay = Delay::new(unsafe{cortex_m::Peripherals::steal()}.SYST, clocks);
+		delay.delay_us(200 as u32);
+
+		let mut sdram = Sdram{
+		                    sdramc,
+		                    pins,
+		                    start_address : 0x7000_0000 as *const u32, //start address defined by the hardware
+		                    size : 0x0200_0000, // 256 MB
+		                    mode : SdramMode::NORMAL
+						};
+
+		sdram.setMode(SdramMode::NOP);
+		//read mode + mem barrier + write to sdram
+
+		sdram.setMode(SdramMode::ALLBANKS_PRECHARGE);
+		//read mode + mem barrier + write to sdram
+
+		sdram.setMode(SdramMode::AUTO_REFRESH);
+		//read mode + mem barrier + write to sdram x8
+
+		//Todo missing steps 7-11 from Datasheet
+
+		//return sdram
+		Ok(sdram)
+	}
+
+	pub fn setMode(&mut self, mode : SdramMode) {
+		self.sdramc.sdramc_mr.write( |w| {
+			match mode {
+				SdramMode::NORMAL             => w.mode().normal(),
+				SdramMode::NOP                => w.mode().nop(),
+				SdramMode::ALLBANKS_PRECHARGE => w.mode().allbanks_precharge(),
+				SdramMode::LOAD_MODEREG       => w.mode().load_modereg(),
+				SdramMode::AUTO_REFRESH       => w.mode().auto_refresh(),
+				SdramMode::EXT_LOAD_MODEREG   => w.mode().ext_load_modereg(),
+				SdramMode::DEEP_POWERDOWN     => w.mode().deep_powerdown(),
+			}
+		});
+		self.mode = mode;
+	}
+
+	pub fn release(self) -> (SDRAMC, PINS) {
+		(self.sdramc, self.pins)
+	}
 }
