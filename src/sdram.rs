@@ -266,13 +266,13 @@ impl<PINS> Sdram<PINS> {
 		                    mode : SdramMode::NORMAL
 						};
 
-		sdram.setMode(SdramMode::NOP);
+		sdram.set_mode(SdramMode::NOP);
 		//read mode + mem barrier + write to sdram
 
-		sdram.setMode(SdramMode::ALLBANKS_PRECHARGE);
+		sdram.set_mode(SdramMode::ALLBANKS_PRECHARGE);
 		//read mode + mem barrier + write to sdram
 
-		sdram.setMode(SdramMode::AUTO_REFRESH);
+		sdram.set_mode(SdramMode::AUTO_REFRESH);
 		//read mode + mem barrier + write to sdram x8
 
 		//Todo missing steps 7-11 from Datasheet
@@ -281,7 +281,7 @@ impl<PINS> Sdram<PINS> {
 		Ok(sdram)
 	}
 
-	pub fn setMode(&mut self, mode : SdramMode) {
+	pub fn set_mode(&mut self, mode : SdramMode) {
 		self.sdramc.sdramc_mr.write( |w| {
 			match mode {
 				SdramMode::NORMAL             => w.mode().normal(),
