@@ -11,6 +11,7 @@ use crate::target_device::{SDRAMC, PMC};
 use embedded_hal::blocking::delay::{DelayUs};
 
 use target_device::sdramc::sdramc_mr::MODE_A as SdramMode;
+use cortex_m::asm;
 
 
 pub enum SdramColumns {
@@ -20,15 +21,45 @@ pub enum SdramColumns {
 	Columns2K,
 }
 
+impl SdramColumns {
+	pub fn addressing_bits(&self) -> u32 {
+		match self {
+			SdramColumns::Columns256 => 8,
+			SdramColumns::Columns512 => 9,
+			SdramColumns::Columns1K=> 10,
+			SdramColumns::Columns2K => 11
+		}
+	}
+}
+
 pub enum SdramRows {
 	Rows2K,
 	Rows4K,
 	Rows8K
 }
 
+impl SdramRows {
+	pub fn addressing_bits(&self) -> u32 {
+		match self {
+			SdramRows::Rows2K => 11,
+			SdramRows::Rows4K => 12,
+			SdramRows::Rows8K => 13
+		}
+	}
+}
+
 pub enum SdramBanks {
 	Bank2,
 	Bank4
+}
+
+impl SdramBanks {
+	pub fn addressing_bits(&self) -> u32 {
+		match self {
+			SdramBanks::Bank2 => 1,
+			SdramBanks::Bank4 => 2
+		}
+	}
 }
 
 pub enum SdramAlignment {
@@ -215,6 +246,7 @@ pub struct Sdram<PINS> {
 }
 
 impl<PINS> Sdram<PINS> {
+	/// Perform Software Initialisation of the SDRAM
 	pub fn setup(
 		sdramc : SDRAMC,
 		pins : PINS,
@@ -258,24 +290,39 @@ impl<PINS> Sdram<PINS> {
 		let mut delay = Delay::new(unsafe{cortex_m::Peripherals::steal()}.SYST, clocks);
 		delay.delay_us(200 as u32);
 
+		let addressing_bits = config.banks.addressing_bits() + config.rows.addressing_bits() + config.columns.addressing_bits();
+		
 		let mut sdram = Sdram{
 		                    sdramc,
 		                    pins,
 		                    start_address : 0x7000_0000 as *const u32, //start address defined by the hardware
-		                    size : 0x0200_0000, // 256 MB
+		                    size : 1 << addressing_bits,
 		                    mode : SdramMode::NORMAL
 						};
 
+		let mem_addr = sdram.start_address as *mut u32;
+
 		sdram.set_mode(SdramMode::NOP);
 		//read mode + mem barrier + write to sdram
+		let _ = sdram.sdramc.sdramc_mr.read().mode().bits();
+		asm::dmb();
+		unsafe { core::ptr::write_unaligned(mem_addr, 0); }
 
 		sdram.set_mode(SdramMode::ALLBANKS_PRECHARGE);
 		//read mode + mem barrier + write to sdram
+		let _ = sdram.sdramc.sdramc_mr.read().mode().bits();
+		asm::dmb();
+		unsafe { core::ptr::write_unaligned(mem_addr, 1); }
 
 		sdram.set_mode(SdramMode::AUTO_REFRESH);
 		//read mode + mem barrier + write to sdram x8
+		let _ = sdram.sdramc.sdramc_mr.read().mode().bits();
+		asm::dmb();
+		for i in 0..8 {
+			unsafe { core::ptr::write_unaligned(mem_addr, i); }
+		}
 
-		//Todo missing steps 7-11 from Datasheet
+		//Todo missing steps 8-11 from Datasheet
 
 		//return sdram
 		Ok(sdram)
