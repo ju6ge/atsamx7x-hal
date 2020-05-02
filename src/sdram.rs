@@ -74,22 +74,22 @@ pub enum SdramAlignment {
 }
 
 pub struct SdramTiming {
-	twr : PicoSeconds,
-	trc : PicoSeconds,
-	trp : PicoSeconds,
-	trcd : PicoSeconds,
-	tras : PicoSeconds,
-	txsr : PicoSeconds,
-	refresh : PicoSeconds
+	pub twr : PicoSeconds,
+	pub trc : PicoSeconds,
+	pub trp : PicoSeconds,
+	pub trcd : PicoSeconds,
+	pub tras : PicoSeconds,
+	pub txsr : PicoSeconds,
+	pub refresh : PicoSeconds
 }
 
 pub struct SdramConfig {
-	banks : SdramBanks,
-	rows : SdramRows,
-	columns : SdramColumns,
-	alignment : SdramAlignment,
-	latency : SdramCasLatency,
-	timing : SdramTiming
+	pub banks : SdramBanks,
+	pub rows : SdramRows,
+	pub columns : SdramColumns,
+	pub alignment : SdramAlignment,
+	pub latency : SdramCasLatency,
+	pub timing : SdramTiming
 }
 
 #[derive(Debug)]
