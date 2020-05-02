@@ -21,7 +21,7 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
-cortex-m = "0.6.0"
+cortex-m = { version = "0.6.0", features = ["inline-asm"] }
 embedded-hal = { version = "0.2.3", features = ["unproven"] }
 nb = "0.1.2"
 atsame70q21  = { version = "0.0.1", git = "https://github.com/ju6ge/atsame70q21" }

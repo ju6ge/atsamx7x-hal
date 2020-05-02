@@ -3,7 +3,7 @@ use crate::gpio::pioc::{PC0, PC1, PC2, PC3, PC4, PC5, PC6, PC7, PC18, PC15, PC20
 use crate::gpio::piod::{PD13, PD14, PD15, PD16, PD17, PD23, PD29};
 use crate::gpio::pioe::{PE0, PE1, PE2, PE3, PE4, PE5};
 use crate::gpio::{PeripheralCntr, PeriphA, PeriphC};
-use crate::time::NanoSeconds;
+use crate::time::{PicoSeconds};
 use crate::clock_gen::Clocks;
 use crate::delay::Delay;
 
@@ -62,19 +62,25 @@ impl SdramBanks {
 	}
 }
 
+pub enum SdramCasLatency{
+	Latency1,
+	Latency2,
+	Latency3
+}
+
 pub enum SdramAlignment {
 	Aligned,
 	Unaligned
 }
 
 pub struct SdramTiming {
-	twr : NanoSeconds,
-	trc : NanoSeconds,
-	trp : NanoSeconds,
-	trcd : NanoSeconds,
-	tras : NanoSeconds,
-	txsr : NanoSeconds,
-	refresh : NanoSeconds
+	twr : PicoSeconds,
+	trc : PicoSeconds,
+	trp : PicoSeconds,
+	trcd : PicoSeconds,
+	tras : PicoSeconds,
+	txsr : PicoSeconds,
+	refresh : PicoSeconds
 }
 
 pub struct SdramConfig {
@@ -82,6 +88,7 @@ pub struct SdramConfig {
 	rows : SdramRows,
 	columns : SdramColumns,
 	alignment : SdramAlignment,
+	latency : SdramCasLatency,
 	timing : SdramTiming
 }
 
@@ -264,9 +271,10 @@ impl<PINS> Sdram<PINS> {
 		//Enable SDRAM Clock
 		pmc.pmc_pcer1.write( |w| w.pid62().set_bit() );
 
-		//Todo calculate correct timing parameters
+		let cycle_duration : PicoSeconds = clocks.mck().into();
 
 		sdramc.sdramc_cr.write( |w| {
+			//configure size specification
 			match config.columns {
 				SdramColumns::Columns256 => w.nc().col8(),
 				SdramColumns::Columns512 => w.nc().col9(),
@@ -282,9 +290,24 @@ impl<PINS> Sdram<PINS> {
 				SdramBanks::Bank2 => w.nb().bank2(),
 				SdramBanks::Bank4 => w.nb().bank4(),
 			};
+
 			// make sure to be in 16 bit mode since this architechture only supports 16bit wide data access
-			w.dbw().set_bit()
-			//Todo add Timing parameters
+			w.dbw().set_bit();
+
+			// Timing conifiguration
+			match config.latency {
+				SdramCasLatency::Latency1 => w.cas().latency1(),
+				SdramCasLatency::Latency2 => w.cas().latency2(),
+				SdramCasLatency::Latency3 => w.cas().latency3(),
+			};
+			unsafe {
+				w.twr().bits(cycle_duration.cycles(config.timing.twr) as u8);
+				w.trc_trfc().bits(cycle_duration.cycles(config.timing.trc) as u8);
+				w.trp().bits(cycle_duration.cycles(config.timing.trp) as u8);
+				w.trcd().bits(cycle_duration.cycles(config.timing.trcd) as u8);
+				w.tras().bits(cycle_duration.cycles(config.timing.tras) as u8);
+				w.txsr().bits(cycle_duration.cycles(config.timing.txsr) as u8)
+			}
 		});
 
 		let mut delay = Delay::new(unsafe{cortex_m::Peripherals::steal()}.SYST, clocks);
@@ -302,27 +325,52 @@ impl<PINS> Sdram<PINS> {
 
 		let mem_addr = sdram.start_address as *mut u32;
 
+		// Initialisation steps from Datasheet
+		// each step:
+		//     set mode
+		//     read mode
+		//     mem barrier
+		//     write to sdram
 		sdram.set_mode(SdramMode::NOP);
-		//read mode + mem barrier + write to sdram
 		let _ = sdram.sdramc.sdramc_mr.read().mode().bits();
 		asm::dmb();
 		unsafe { core::ptr::write_unaligned(mem_addr, 0); }
 
 		sdram.set_mode(SdramMode::ALLBANKS_PRECHARGE);
-		//read mode + mem barrier + write to sdram
 		let _ = sdram.sdramc.sdramc_mr.read().mode().bits();
 		asm::dmb();
 		unsafe { core::ptr::write_unaligned(mem_addr, 1); }
 
 		sdram.set_mode(SdramMode::AUTO_REFRESH);
-		//read mode + mem barrier + write to sdram x8
 		let _ = sdram.sdramc.sdramc_mr.read().mode().bits();
 		asm::dmb();
 		for i in 0..8 {
 			unsafe { core::ptr::write_unaligned(mem_addr, i); }
 		}
 
-		//Todo missing steps 8-11 from Datasheet
+		sdram.set_mode(SdramMode::LOAD_MODEREG);
+		let _ = sdram.sdramc.sdramc_mr.read().mode().bits();
+		asm::dmb();
+		unsafe { core::ptr::write_unaligned(mem_addr, 2); }
+
+		//Missing Step for mobile sdram initialisation maybe add this in the future
+		//-> but will likely require additions to the conifiguration
+
+		sdram.set_mode(SdramMode::NORMAL);
+		let _ = sdram.sdramc.sdramc_mr.read().mode().bits();
+		asm::dmb();
+		unsafe { core::ptr::write_unaligned(mem_addr, 3); }
+
+		//enabele refresh
+		sdram.sdramc.sdramc_tr.write(|w| unsafe{ w.count().bits(cycle_duration.cycles(config.timing.refresh) as u16 ) });
+
+		//alignment
+		sdram.sdramc.sdramc_cfr1.modify(|_,w| {
+			match config.alignment {
+				SdramAlignment::Unaligned => w.unal().clear_bit(),
+				SdramAlignment::Aligned   => w.unal().set_bit(),
+			}
+		});
 
 		//return sdram
 		Ok(sdram)
@@ -341,6 +389,14 @@ impl<PINS> Sdram<PINS> {
 			}
 		});
 		self.mode = mode;
+	}
+
+	pub fn start_address(self) -> *const u32 {
+		self.start_address
+	}
+
+	pub fn size(self) -> u32 {
+		self.size
 	}
 
 	pub fn release(self) -> (SDRAMC, PINS) {
