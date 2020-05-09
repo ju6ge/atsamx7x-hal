@@ -106,8 +106,8 @@ macro_rules! gpio {
 						self,
 					) -> $PXi<PeripheralCntr<PeriphA>>{
 						unsafe {
-							&(*$PIOX::ptr()).pio_abcdsr[0].write(|w| { w.$pxi().clear_bit() });
-							&(*$PIOX::ptr()).pio_abcdsr[1].write(|w| { w.$pxi().clear_bit() });
+							&(*$PIOX::ptr()).pio_abcdsr[0].modify(|_,w| { w.$pxi().clear_bit() });
+							&(*$PIOX::ptr()).pio_abcdsr[1].modify(|_,w| { w.$pxi().clear_bit() });
 							&(*$PIOX::ptr()).pio_pdr.write(|w| { w.$pxi().set_bit() });
 						}
 
@@ -118,8 +118,8 @@ macro_rules! gpio {
 						self,
 					) -> $PXi<PeripheralCntr<PeriphB>>{
 						unsafe {
-							&(*$PIOX::ptr()).pio_abcdsr[0].write(|w| { w.$pxi().set_bit() });
-							&(*$PIOX::ptr()).pio_abcdsr[1].write(|w| { w.$pxi().clear_bit() });
+							&(*$PIOX::ptr()).pio_abcdsr[0].modify(|_,w| { w.$pxi().set_bit() });
+							&(*$PIOX::ptr()).pio_abcdsr[1].modify(|_,w| { w.$pxi().clear_bit() });
 							&(*$PIOX::ptr()).pio_pdr.write(|w| { w.$pxi().set_bit() });
 						}
 
@@ -131,8 +131,8 @@ macro_rules! gpio {
 						self,
 					) -> $PXi<PeripheralCntr<PeriphC>>{
 						unsafe {
-							&(*$PIOX::ptr()).pio_abcdsr[0].write(|w| { w.$pxi().clear_bit() });
-							&(*$PIOX::ptr()).pio_abcdsr[1].write(|w| { w.$pxi().set_bit() });
+							&(*$PIOX::ptr()).pio_abcdsr[0].modify(|_,w| { w.$pxi().clear_bit() });
+							&(*$PIOX::ptr()).pio_abcdsr[1].modify(|_,w| { w.$pxi().set_bit() });
 							&(*$PIOX::ptr()).pio_pdr.write(|w| { w.$pxi().set_bit() });
 						}
 
@@ -144,8 +144,8 @@ macro_rules! gpio {
 						self,
 					) -> $PXi<PeripheralCntr<PeriphD>>{
 						unsafe {
-							&(*$PIOX::ptr()).pio_abcdsr[0].write(|w| { w.$pxi().set_bit() });
-							&(*$PIOX::ptr()).pio_abcdsr[1].write(|w| { w.$pxi().set_bit() });
+							&(*$PIOX::ptr()).pio_abcdsr[0].modify(|_,w| { w.$pxi().set_bit() });
+							&(*$PIOX::ptr()).pio_abcdsr[1].modify(|_,w| { w.$pxi().set_bit() });
 							&(*$PIOX::ptr()).pio_pdr.write(|w| { w.$pxi().set_bit() });
 						}
 
