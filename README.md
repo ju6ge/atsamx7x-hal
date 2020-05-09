@@ -17,6 +17,7 @@ $ rustup target add thumbv6m-none-eabi thumbv7m-none-eabi thumbv7em-none-eabi th
 - [x] Delays
 - [x] GPIO 
 - [x] UART
+- [x] SDRAMC
 
 # Todo
 - [ ] SPI
