@@ -310,6 +310,16 @@ impl<PINS> Sdram<PINS> {
 			}
 		});
 
+		//alignment
+		sdramc.sdramc_cfr1.modify(|_,w| {
+			match config.alignment {
+				SdramAlignment::Unaligned => w.unal().clear_bit(),
+				SdramAlignment::Aligned   => w.unal().set_bit(),
+			}
+		});
+
+		sdramc.sdramc_mdr.write(|w| w.md().sdram() );
+
 		let mut delay = Delay::new(unsafe{cortex_m::Peripherals::steal()}.SYST, clocks);
 		delay.delay_us(200 as u32);
 
@@ -334,24 +344,24 @@ impl<PINS> Sdram<PINS> {
 		sdram.set_mode(SdramMode::NOP);
 		let _ = sdram.sdramc.sdramc_mr.read().mode().bits();
 		asm::dmb();
-		unsafe { core::ptr::write_unaligned(mem_addr, 0); }
+		unsafe { core::ptr::write_volatile(mem_addr, 0); }
 
 		sdram.set_mode(SdramMode::ALLBANKS_PRECHARGE);
 		let _ = sdram.sdramc.sdramc_mr.read().mode().bits();
 		asm::dmb();
-		unsafe { core::ptr::write_unaligned(mem_addr, 1); }
+		unsafe { core::ptr::write_volatile(mem_addr, 1); }
 
 		sdram.set_mode(SdramMode::AUTO_REFRESH);
 		let _ = sdram.sdramc.sdramc_mr.read().mode().bits();
 		asm::dmb();
 		for i in 0..8 {
-			unsafe { core::ptr::write_unaligned(mem_addr, i); }
+			unsafe { core::ptr::write_volatile(mem_addr, i); }
 		}
 
 		sdram.set_mode(SdramMode::LOAD_MODEREG);
 		let _ = sdram.sdramc.sdramc_mr.read().mode().bits();
 		asm::dmb();
-		unsafe { core::ptr::write_unaligned(mem_addr, 2); }
+		unsafe { core::ptr::write_volatile(mem_addr, 2); }
 
 		//Missing Step for mobile sdram initialisation maybe add this in the future
 		//-> but will likely require additions to the conifiguration
@@ -359,18 +369,10 @@ impl<PINS> Sdram<PINS> {
 		sdram.set_mode(SdramMode::NORMAL);
 		let _ = sdram.sdramc.sdramc_mr.read().mode().bits();
 		asm::dmb();
-		unsafe { core::ptr::write_unaligned(mem_addr, 3); }
+		unsafe { core::ptr::write_volatile(mem_addr, 3); }
 
 		//enabele refresh
 		sdram.sdramc.sdramc_tr.write(|w| unsafe{ w.count().bits(cycle_duration.cycles(config.timing.refresh) as u16 ) });
-
-		//alignment
-		sdram.sdramc.sdramc_cfr1.modify(|_,w| {
-			match config.alignment {
-				SdramAlignment::Unaligned => w.unal().clear_bit(),
-				SdramAlignment::Aligned   => w.unal().set_bit(),
-			}
-		});
 
 		//return sdram
 		Ok(sdram)
