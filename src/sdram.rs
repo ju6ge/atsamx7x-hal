@@ -177,7 +177,8 @@ impl<PINS> Sdram<PINS> {
 		let mut delay = Delay::new(unsafe{cortex_m::Peripherals::steal()}.SYST, clocks);
 		delay.delay_us(200 as u32);
 
-		let addressing_bits = config.banks.addressing_bits() + config.rows.addressing_bits() + config.columns.addressing_bits();
+		//Bank Bits + Row Bits + Column Bits + 1 (sine last bit references u8 within the u16)
+		let addressing_bits = config.banks.addressing_bits() + config.rows.addressing_bits() + config.columns.addressing_bits() + 1;
 		
 		let mut sdram = Sdram{
 		                    sdramc,
@@ -247,11 +248,11 @@ impl<PINS> Sdram<PINS> {
 		self.mode = mode;
 	}
 
-	pub fn start_address(self) -> *const u32 {
+	pub fn start_address(&self) -> *const u32 {
 		self.start_address
 	}
 
-	pub fn size(self) -> u32 {
+	pub fn size(&self) -> u32 {
 		self.size
 	}
 
