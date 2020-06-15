@@ -11,3 +11,4 @@ pub mod time;
 pub mod delay;
 pub mod clock_gen;
 pub mod sdram;
+pub mod mpu;
