@@ -354,7 +354,7 @@ impl Mpu for MPU {
 		//  configurable
 		unsafe {
 			self.ctrl.modify( |r| {
-				(r & 0xFFFF_FFF8) | 0x3
+				(r & 0xFFFF_FFF8) | 0x5
 			});
 		}
 
