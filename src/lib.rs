@@ -10,6 +10,7 @@ pub mod serial;
 pub mod time;
 pub mod delay;
 pub mod clock_gen;
+pub mod ebi;
 pub mod sdram;
 pub mod smc;
 pub mod mpu;

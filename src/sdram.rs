@@ -7,6 +7,7 @@
 use crate::time::{PicoSeconds};
 use crate::clock_gen::Clocks;
 use crate::delay::Delay;
+use crate::ebi::{ExternalBusInterface};
 
 use crate::target_device::{SDRAMC, PMC};
 use embedded_hal::blocking::delay::{DelayUs};
@@ -95,28 +96,23 @@ pub struct SdramConfig {
 #[derive(Debug)]
 pub struct InvalidConfig;
 
-/// Trait to for implement for Pin Configuration
-pub trait SdramPins {}
 
-pub struct Sdram<PINS> {
+pub struct Sdram{
 	sdramc : SDRAMC,
-	pins: PINS,
 	start_address : *const u32,
 	size : u32,
 	mode : SdramMode
 }
 
-impl<PINS> Sdram<PINS> {
+impl Sdram{
 	/// Perform Software Initialisation of the SDRAM
 	pub fn setup(
 		sdramc : SDRAMC,
-		pins : PINS,
+		_ebi: &ExternalBusInterface, //this reference is only here so that we force the programmer to setup the pins correctly beforehand
 		config : SdramConfig,
 		clocks : &Clocks,
 		pmc : &mut PMC
 	) -> Result<Self, InvalidConfig>
-	where
-		PINS: SdramPins
 	{
 		//enable sdram address area
 		let matrix = unsafe { &(*target_device::MATRIX::ptr()) };
@@ -182,7 +178,6 @@ impl<PINS> Sdram<PINS> {
 		
 		let mut sdram = Sdram{
 		                    sdramc,
-		                    pins,
 		                    start_address : 0x7000_0000 as *const u32, //start address defined by the hardware
 		                    size : 1 << addressing_bits,
 		                    mode : SdramMode::NORMAL
@@ -256,7 +251,7 @@ impl<PINS> Sdram<PINS> {
 		self.size
 	}
 
-	pub fn release(self) -> (SDRAMC, PINS) {
-		(self.sdramc, self.pins)
+	pub fn release(self) -> SDRAMC{
+		self.sdramc
 	}
 }
