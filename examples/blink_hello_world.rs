@@ -53,8 +53,8 @@ fn main() -> ! {
 	let mut pin1 = pioc.p10.into_open_drain_output();
 
 	let pioa = peripherals.PIOA.split(&mut pmc);
-	let tx = pioa.p10.into_pmd0();
-	let rx = pioa.p9.into_pmd0();
+	let tx = pioa.p10.into_peripheral_a();
+	let rx = pioa.p9.into_peripheral_a();
 
 	let mut serial = Serial::uart0(
 		peripherals.UART0,

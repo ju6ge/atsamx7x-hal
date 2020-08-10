@@ -102,7 +102,7 @@ macro_rules! gpio {
 				}
 
 				impl<MODE> $PXi<MODE> {
-					pub fn into_pmd0(
+					pub fn into_peripheral_a(
 						self,
 					) -> $PXi<PeripheralCntr<PeriphA>>{
 						unsafe {
@@ -114,7 +114,7 @@ macro_rules! gpio {
 						$PXi { _mode: PhantomData }
 					}
 
-					pub fn into_pmd1(
+					pub fn into_peripheral_b(
 						self,
 					) -> $PXi<PeripheralCntr<PeriphB>>{
 						unsafe {
@@ -127,7 +127,7 @@ macro_rules! gpio {
 					}
 
 
-					pub fn into_pmd2(
+					pub fn into_peripheral_c(
 						self,
 					) -> $PXi<PeripheralCntr<PeriphC>>{
 						unsafe {
@@ -140,7 +140,7 @@ macro_rules! gpio {
 					}
 
 
-					pub fn into_pmd3(
+					pub fn into_peripheral_d(
 						self,
 					) -> $PXi<PeripheralCntr<PeriphD>>{
 						unsafe {
