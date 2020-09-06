@@ -70,6 +70,61 @@ pub struct SmcDeviceMode{
 	// Todo: Add support for Data Float Time Optimisation
 }
 
+impl Default for SmcDeviceMode {
+	fn default() -> SmcDeviceMode {
+		SmcDeviceMode {
+			dbw: SmcDeviceBusWidth::_8_BIT,
+			bat: SmcDeviceByteAccess::BYTE_SELECT,
+			nwait: SmcDeviceNwait::DISABLED,
+			read_mode: SmcDeviceReadMode::ReadSignalNcs,
+			write_mode: SmcDeviceWriteMode::WriteSignalNcs,
+			ps : None
+		}
+	}
+}
+
+impl SmcDeviceMode {
+	pub fn bus_width_16_bit(mut self) -> Self {
+		self.dbw = SmcDeviceBusWidth::_16_BIT;
+		self
+	}
+
+	pub fn bus_width_8_bit(mut self) -> Self {
+		self.dbw = SmcDeviceBusWidth::_8_BIT;
+		self
+	}
+
+	pub fn nwait(mut self, x:SmcDeviceNwait) -> Self {
+		self.nwait = x;
+		self
+	}
+
+	pub fn bat(mut self, x:SmcDeviceByteAccess) -> Self {
+		self.bat = x;
+		self
+	}
+
+	pub fn read_mode(mut self, x:SmcDeviceReadMode) -> Self {
+		self.read_mode = x;
+		self
+	}
+
+	pub fn write_mode(mut self, x:SmcDeviceWriteMode) -> Self {
+		self.write_mode = x;
+		self
+	}
+
+	pub fn ps(mut self, x:SmcDevicePageSize) -> Self {
+		self.ps = Some(x);
+		self
+	}
+
+	pub fn disable_pages(mut self) -> Self {
+		self.ps = None;
+		self
+	}
+}
+
 
 // Todo: Add support for data scrambling per device, not a priority for v1.0 of this library
 
@@ -147,7 +202,6 @@ pub struct Smc {
 }
 
 /// SMC trait
-
 impl Smc {
 	/// Setup Static Memmory Controller
 	pub fn setup(
@@ -171,6 +225,11 @@ impl Smc {
 		device : SmcDeviceSelect,
 		config : SmcDeviceConfig
 	) -> Result<(), InvalidConfig>{
+
+		// Todo: maybe add some checks here, to check that config is valid
+		// pulse value may never be 0
+		// step + pulse < cycle => if not => unpredictable behavior of the smc module
+		
 		// write setup register
 		unsafe {
 			self.smc.smc_cs_number[device.nr()].smc_setup.write( |w| {
@@ -222,9 +281,35 @@ impl Smc {
 				SmcDeviceNwait::READY => w.exnw_mode().ready()
 			};
 
+			match config.mode.read_mode {
+				SmcDeviceReadMode::ReadSignalNcs => w.read_mode().clear_bit(),
+				SmcDeviceReadMode::ReadSignalNrd => w.read_mode().set_bit()
+			};
+
+			match config.mode.write_mode {
+				SmcDeviceWriteMode::WriteSignalNcs => w.read_mode().clear_bit(),
+				SmcDeviceWriteMode::WriteSignalNwe => w.read_mode().set_bit()
+			};
+
+			match config.mode.ps {
+				None => w.pmen().clear_bit(),
+				Some(ps) => {
+					match ps {
+						SmcDevicePageSize::_4_BYTE => w.ps()._4_byte(),
+						SmcDevicePageSize::_8_BYTE => w.ps()._8_byte(),
+						SmcDevicePageSize::_16_BYTE => w.ps()._16_byte(),
+						SmcDevicePageSize::_32_BYTE => w.ps()._32_byte()
+					};
+					w.pmen().set_bit()
+				}
+			};
+
 			w
 		});
 
 		Ok(())
 	}
+
+	// Todo: possibly add function to read configuration of a device from the smc
+	// pub fn read_device_config(&self, device:SmcDeviceSelect) -> SmcDeviceConfig {}
 }
