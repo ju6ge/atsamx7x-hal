@@ -182,9 +182,13 @@ impl PicoSeconds {
 	pub fn cycles(self, time:PicoSeconds) -> u32{
 		let period = self.0;
 		let target = time.0;
-		assert!(target > period);
+		// if target time is smaller than period, return 1 since we can't get more accurate than one cycle
+		if period > target {
+			return 1
+		}
 		let x = target / period;
 		let error_x = target - period*x;
+		// check if error is within one nano second, since we don't want to undershoot the cycle wait time by more
 		if error_x < 1_000 {
 			x
 		} else {
