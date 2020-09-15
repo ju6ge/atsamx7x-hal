@@ -104,13 +104,23 @@ impl SmcDeviceMode {
 		self
 	}
 
-	pub fn read_mode(mut self, x:SmcDeviceReadMode) -> Self {
-		self.read_mode = x;
+	pub fn read_mode_cs(mut self) -> Self {
+		self.read_mode = SmcDeviceReadMode::ReadSignalNcs;
 		self
 	}
 
-	pub fn write_mode(mut self, x:SmcDeviceWriteMode) -> Self {
-		self.write_mode = x;
+	pub fn read_mode_rd(mut self) -> Self {
+		self.read_mode = SmcDeviceReadMode::ReadSignalNrd;
+		self
+	}
+
+	pub fn write_mode_cs(mut self) -> Self {
+		self.write_mode = SmcDeviceWriteMode::WriteSignalNcs;
+		self
+	}
+
+	pub fn write_mode_we(mut self) -> Self {
+		self.write_mode = SmcDeviceWriteMode::WriteSignalNwe;
 		self
 	}
 
@@ -182,7 +192,7 @@ fn calc_cycle_val(clk: Hertz, delay: PicoSeconds) -> u16 {
 	let mut cycle = cycles_duration.cycles(delay);
 
 	for i in (1..=3).rev() {
-		if 256*i >= cycle {
+		if cycle >= 256*i{
 			cycle -= 256*i;
 			v |= (i as u16) << 7;
 			break;
